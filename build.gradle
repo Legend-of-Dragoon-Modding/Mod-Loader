@@ -6,7 +6,10 @@ plugins {
 group = 'org.legendofdragoon'
 version = '1.0-SNAPSHOT'
 
-sourceCompatibility = targetCompatibility = 1.17
+java {
+  sourceCompatibility = targetCompatibility = 1.17
+}
+
 compileJava.options.encoding = 'UTF-8'
 
 repositories {
