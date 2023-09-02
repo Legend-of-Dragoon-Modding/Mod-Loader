@@ -1,0 +1,53 @@
+plugins {
+  id 'java'
+  id 'maven-publish'
+}
+
+group = 'org.legendofdragoon'
+version = '1.0-SNAPSHOT'
+
+sourceCompatibility = targetCompatibility = 1.17
+compileJava.options.encoding = 'UTF-8'
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.14.1'
+  implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.1'
+  implementation group: 'org.fusesource.jansi', name: 'jansi', version: '2.3.2'
+
+  implementation group: 'org.reflections', name: 'reflections', version: '0.10.2'
+  // To quiet no logger found for reflections
+  implementation group: 'org.slf4j', name: 'slf4j-nop', version: '2.0.7'
+
+  implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
+}
+
+task sourceJar(type: Jar) {
+  from sourceSets.main.allJava
+}
+
+java {
+  withJavadocJar()
+  withSourcesJar()
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      artifactId = 'mod-loader'
+      from components.java
+      pom {
+        name = 'Severed Chains Mod Loader'
+      }
+    }
+  }
+}
+
+javadoc {
+  if(JavaVersion.current().isJava9Compatible()) {
+    options.addBooleanOption('html5', true)
+  }
+}
