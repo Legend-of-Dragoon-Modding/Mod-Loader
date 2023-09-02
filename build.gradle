@@ -28,7 +28,7 @@ dependencies {
   implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
 }
 
-task sourceJar(type: Jar) {
+tasks.register('sourceJar', Jar) {
   from sourceSets.main.allJava
 }
 
