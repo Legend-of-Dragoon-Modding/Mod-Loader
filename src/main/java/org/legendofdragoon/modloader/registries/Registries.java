@@ -46,7 +46,7 @@ public class Registries {
         throw new IllegalArgumentException("Unknown registry " + registry);
       }
 
-      Registries.this.events.postEvent(Registries.this.registryEvents.get(mutableRegistry).apply(mutableRegistry));
+      Registries.this.events.registerListener(Registries.this.registryEvents.get(mutableRegistry).apply(mutableRegistry));
       mutableRegistry.lock();
       this.initialized.add(mutableRegistry);
     }

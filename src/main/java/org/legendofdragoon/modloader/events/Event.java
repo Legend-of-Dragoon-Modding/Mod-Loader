@@ -1,5 +1,5 @@
 package org.legendofdragoon.modloader.events;
 
-public class Event {
+public abstract class Event {
 
 }
