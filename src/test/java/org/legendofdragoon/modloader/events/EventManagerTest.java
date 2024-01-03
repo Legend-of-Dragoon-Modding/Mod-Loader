@@ -66,7 +66,7 @@ class EventManagerTest {
     void registerListener_same() {
         // Setup
         final var m = new EventManager();
-        final var l = new TestListeners.SameBoth();
+        final var l = new TestListeners.MultipleSameEvent();
         // Test
         m.registerListener(l);
         // Verify
@@ -111,7 +111,7 @@ class EventManagerTest {
         final var l1 = new TestListeners.Before();
         final var l2 = new TestListeners.After();
         final var l3 = new TestListeners.Both();
-        final var l4 = new TestListeners.SameBoth();
+        final var l4 = new TestListeners.MultipleSameEvent();
         final var event = new TestEvents.One(Result.HANDLED.ordinal());
         m.registerListener(l1);
         m.registerListener(l2);
@@ -140,7 +140,7 @@ class EventManagerTest {
         final var l1 = new TestListeners.Before();
         final var l2 = new TestListeners.After();
         final var l3 = new TestListeners.Both();
-        final var l4 = new TestListeners.SameBoth();
+        final var l4 = new TestListeners.MultipleSameEvent();
         final var event = new TestEvents.One(Result.CANCEL.ordinal());
         m.registerListener(l1);
         m.registerListener(l2);
@@ -183,5 +183,69 @@ class EventManagerTest {
         assertEquals(0, event.aftered);
         assertEquals(1, l1.events.size());
         assertEquals(1, l2.events.size());
+    }
+
+    @Test
+    void postEvent_exception() {
+        // Setup
+        final var m = new EventManager();
+        final var l1 = new TestListeners.Both();
+        final var l2 = new TestListeners.ExceptionListeners();
+        final var event1 = new TestEvents.One(Result.CONTINUE.ordinal());
+        final var event2 = new TestEvents.One(Result.CONTINUE.ordinal());
+        m.registerListener(l1);
+        m.registerListener(l2);
+
+        // Test
+        m.postEvent(event1, (TestEvents.One e) -> {
+            TestListeners.defaultLogic(e);
+        });
+
+        // Test
+        m.postEvent(event2, (TestEvents.One e) -> {
+            TestListeners.defaultLogic(e);
+        });
+
+        // Verify
+        assertEquals(2, event1.befored);
+        assertEquals(1, event1.defaulted);
+        assertEquals(2, event1.aftered);
+        assertEquals(1, event2.befored);
+        assertEquals(1, event2.defaulted);
+        assertEquals(1, event2.aftered);
+        assertEquals(2, l1.before.size());
+        assertEquals(2, l1.after.size());
+    }
+
+    @Test
+    void postEvent_deregister() {
+        // Setup
+        final var m = new EventManager();
+        final var l1 = new TestListeners.Both();
+        final var l2 = new TestListeners.DeregisterListener();
+        final var event1 = new TestEvents.One(Result.CONTINUE.ordinal());
+        final var event2 = new TestEvents.One(Result.CONTINUE.ordinal());
+        m.registerListener(l1);
+        m.registerListener(l2);
+
+        // Test
+        m.postEvent(event1, (TestEvents.One e) -> {
+            TestListeners.defaultLogic(e);
+        });
+
+        // Test
+        m.postEvent(event2, (TestEvents.One e) -> {
+            TestListeners.defaultLogic(e);
+        });
+
+        // Verify
+        assertEquals(2, event1.befored);
+        assertEquals(1, event1.defaulted);
+        assertEquals(1, event1.aftered);
+        assertEquals(1, event2.befored);
+        assertEquals(1, event2.defaulted);
+        assertEquals(1, event2.aftered);
+        assertEquals(2, l1.before.size());
+        assertEquals(2, l1.after.size());
     }
 }

@@ -7,9 +7,7 @@ import org.legendofdragoon.modloader.events.listeners.Result;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 class EventListeners<T extends Event> {
@@ -18,12 +16,12 @@ class EventListeners<T extends Event> {
   /***
    * The prioritized set of 'before' Event Listeners.
    */
-  private final List<Invokable> before = new CopyOnWriteArrayList<>();
+  private final List<Invokable> before = Collections.synchronizedList(new ArrayList<>());
 
   /***
    * The prioritized set of 'after' Event Listeners.
    */
-  private final List<Invokable> after = new CopyOnWriteArrayList<>();
+  private final List<Invokable> after = Collections.synchronizedList(new ArrayList<>());
 
   /***
    * A record to store the invokable method for an Event Listener.
@@ -130,16 +128,21 @@ class EventListeners<T extends Event> {
    * @return Whether to continue the processing of the event.
    */
   public Result before(final T event) {
-    for (final var i = this.before.iterator(); i.hasNext(); ) {
-      final var invokable =  i.next();
-      try {
-        final var result = invokable.invoke(event);
-        if (result == Result.HANDLED || result == Result.CANCEL) {
-          return (Result) result;
+    synchronized (this.before) {
+      for (final var i = this.before.iterator(); i.hasNext(); ) {
+        final var invokable = i.next();
+        try {
+          final var result = invokable.invoke(event);
+          // Using if checks as opposed to switch since `before` calls can return void
+          if (result == Result.HANDLED || result == Result.CANCEL) {
+            return (Result) result;
+          } else if (result == Result.DEREGISTER) {
+            i.remove();
+          }
+        } catch (Exception e) {
+          LOGGER.error("Failed to invoke 'before' listener for %s".formatted(invokable.toString()), e);
+          i.remove();
         }
-      } catch (Exception e) {
-        LOGGER.error("Failed to invoke 'before' listener for %s".formatted(invokable.toString()), e);
-        i.remove();
       }
     }
     return Result.CONTINUE;
@@ -150,13 +153,15 @@ class EventListeners<T extends Event> {
    * @param event The posted Event
    */
   public void after(final T event) {
-    for (final var i = this.after.iterator(); i.hasNext(); ) {
-      final var invokable =  i.next();
-      try {
-        invokable.invoke(event);
-      } catch (Exception e) {
-        i.remove();
-        LOGGER.error("Failed to invoke 'after' listener for %s".formatted(invokable.toString()), e);
+    synchronized (this.after) {
+      for (final var i = this.after.iterator(); i.hasNext(); ) {
+        final var invokable = i.next();
+        try {
+          invokable.invoke(event);
+        } catch (Exception e) {
+          LOGGER.error("Failed to invoke 'after' listener for %s".formatted(invokable.toString()), e);
+          i.remove();
+        }
       }
     }
   }

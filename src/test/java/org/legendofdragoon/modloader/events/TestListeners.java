@@ -81,7 +81,7 @@ public class TestListeners {
         }
     }
 
-    public static class SameBoth {
+    public static class MultipleSameEvent {
         List<Event> before = new ArrayList<>();
         List<Event> after = new ArrayList<>();
 
@@ -112,6 +112,27 @@ public class TestListeners {
         @EventListener(event = TestEvents.One.class, kind = Kind.BEFORE, priority = Priority.First)
         public void voidReturn(TestEvents.One event) {
             TestListeners.before(event, this.events);
+        }
+    }
+
+    public static class ExceptionListeners {
+        @EventListener(event = TestEvents.One.class, kind = Kind.BEFORE, priority = Priority.First)
+        public Result before(TestEvents.One event) {
+            event.befored++;
+            throw new RuntimeException("Test");
+        }
+        @EventListener(event = TestEvents.One.class, kind = Kind.AFTER, priority = Priority.First)
+        public void after(TestEvents.One event) {
+            event.aftered++;
+            throw new RuntimeException("Test");
+        }
+    }
+
+    public static class DeregisterListener {
+        @EventListener(event = TestEvents.One.class, kind = Kind.BEFORE, priority = Priority.First)
+        public Result before(TestEvents.One event) {
+            event.befored++;
+            return Result.DEREGISTER;
         }
     }
 }
