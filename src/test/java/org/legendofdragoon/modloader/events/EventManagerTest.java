@@ -173,7 +173,9 @@ class EventManagerTest {
         m.registerListener(l2);
 
         // Test
-        m.postEvent(event, TestListeners::defaultLogic);
+        m.postEvent(event, (TestEvents.One e) -> {
+            TestListeners.defaultLogic(e);
+        });
 
         // Verify
         assertTrue(1 <= event.befored);
