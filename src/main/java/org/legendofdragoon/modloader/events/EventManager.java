@@ -6,7 +6,6 @@ import org.legendofdragoon.modloader.events.listeners.EventListener;
 import org.legendofdragoon.modloader.events.listeners.Result;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /***
  * The Event Manager is responsible for registering event listeners and managing sending Events.
@@ -20,7 +19,7 @@ public class EventManager {
    * Key: Event Type Name
    * Value: Event Listeners
    */
-  private final Map<String, EventListeners<?>> listeners = new ConcurrentHashMap<>();
+  private final Map<String, EventListeners<?>> listeners = Collections.synchronizedMap(new HashMap<>());
 
   /***
    * Creates a new Event Manager.
@@ -39,9 +38,12 @@ public class EventManager {
           final var name = event.getTypeName();
           synchronized (EventManager.this.listeners) {
             // Locking here as the `register` step could be missed
-            final var l = EventManager.this.listeners.getOrDefault(name, new EventListeners<>());
+            var l = EventManager.this.listeners.get(name);
+            if (l == null) {
+              l = new EventListeners<>();
+              EventManager.this.listeners.put(name, l);
+            }
             l.register(event, listener);
-            EventManager.this.listeners.putIfAbsent(name, l);
           }
         } catch (Exception e) {
           LOGGER.error("Failed to register listener %s", listener.getClass().getTypeName(), e);
