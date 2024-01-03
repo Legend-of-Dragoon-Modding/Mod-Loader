@@ -1,6 +1,6 @@
 package org.legendofdragoon.modloader.events;
 
-import org.legendofdragoon.modloader.events.listeners.BeforeResult;
+import org.legendofdragoon.modloader.events.listeners.Result;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,11 +10,16 @@ class EventManagerTest {
     void registerListener_before() {
         // Setup
         final var m = new EventManager();
-        final var l = new TestListeners.BeforeOne();
+        final var l = new TestListeners.Before();
         // Test
         m.registerListener(l);
         // Verify
         var result = m.getListeners(TestEvents.One.class);
+        assertNotNull(result);
+        assertEquals(1, result.getBeforeListeners().size());
+        assertEquals(0, result.getAfterListeners().size());
+
+        result = m.getListeners(TestEvents.Two.class);
         assertNotNull(result);
         assertEquals(1, result.getBeforeListeners().size());
         assertEquals(0, result.getAfterListeners().size());
@@ -24,11 +29,16 @@ class EventManagerTest {
     void registerListener_after() {
         // Setup
         final var m = new EventManager();
-        final var l = new TestListeners.AfterOne();
+        final var l = new TestListeners.After();
         // Test
         m.registerListener(l);
         // Verify
         var result = m.getListeners(TestEvents.One.class);
+        assertNotNull(result);
+        assertEquals(0, result.getBeforeListeners().size());
+        assertEquals(1, result.getAfterListeners().size());
+
+        result = m.getListeners(TestEvents.Two.class);
         assertNotNull(result);
         assertEquals(0, result.getBeforeListeners().size());
         assertEquals(1, result.getAfterListeners().size());
@@ -38,7 +48,7 @@ class EventManagerTest {
     void registerListener_both() {
         // Setup
         final var m = new EventManager();
-        final var l = new TestListeners.BothOne();
+        final var l = new TestListeners.Both();
         // Test
         m.registerListener(l);
         // Verify
@@ -46,109 +56,130 @@ class EventManagerTest {
         assertNotNull(result);
         assertEquals(1, result.getBeforeListeners().size());
         assertEquals(1, result.getAfterListeners().size());
-    }
 
+        result = m.getListeners(TestEvents.Two.class);
+        assertNotNull(result);
+        assertEquals(1, result.getBeforeListeners().size());
+        assertEquals(1, result.getAfterListeners().size());
+    }
     @Test
-    void registerListener_both_multiple() {
+    void registerListener_same() {
         // Setup
         final var m = new EventManager();
-        final var l1 = new TestListeners.BothOne();
-        final var l2 = new TestListeners.BothOne();
+        final var l = new TestListeners.SameBoth();
         // Test
-        m.registerListener(l1);
-        m.registerListener(l2);
+        m.registerListener(l);
         // Verify
         var result = m.getListeners(TestEvents.One.class);
         assertNotNull(result);
         assertEquals(2, result.getBeforeListeners().size());
         assertEquals(2, result.getAfterListeners().size());
+
+        result = m.getListeners(TestEvents.Two.class);
+        assertNull(result);
     }
 
     @Test
     void postEvent_continue() {
         // Setup
         final var m = new EventManager();
-        final var l1 = new TestListeners.BothOne();
-        final var l2 = new TestListeners.BothOne();
-        final var l3 = new TestListeners.BothTwo();
-        final var event = new TestEvents.One(BeforeResult.Continue.ordinal());
-        final var defaultListener = new TestListeners.AfterOne();
+        final var l1 = new TestListeners.Before();
+        final var l2 = new TestListeners.After();
+        final var l3 = new TestListeners.Both();
+        final var event = new TestEvents.One(Result.CONTINUE.ordinal());
         m.registerListener(l1);
         m.registerListener(l2);
         m.registerListener(l3);
 
         // Test
-        m.postEvent(event, defaultListener);
+        m.postEvent(event, TestListeners::defaultLogic);
 
         // Verify
-        assertTrue(event.befored);
-        assertTrue(event.aftered);
-        assertEquals(1, defaultListener.events.size());
-        assertEquals(1, l1.before.size());
-        assertEquals(1, l1.after.size());
-        assertEquals(1, l2.before.size());
-        assertEquals(1, l2.after.size());
-        assertEquals(0, l3.before.size());
-        assertEquals(0, l3.after.size());
+        assertTrue(1 <= event.befored);
+        assertEquals(1, event.defaulted);
+        assertTrue(1 <= event.aftered);
+        assertEquals(1, l1.events.size());
+        assertEquals(1, l2.events.size());
+        assertEquals(1, l3.before.size());
+        assertEquals(1, l3.after.size());
     }
 
     @Test
     void postEvent_handled() {
         // Setup
         final var m = new EventManager();
-        final var l1 = new TestListeners.BothOne();
-        final var l2 = new TestListeners.BothOne();
-        final var l3 = new TestListeners.BothTwo();
-        final var event = new TestEvents.One(BeforeResult.Handled.ordinal());
-        final var defaultListener = new TestListeners.AfterOne();
+        final var l1 = new TestListeners.Before();
+        final var l2 = new TestListeners.After();
+        final var l3 = new TestListeners.Both();
+        final var l4 = new TestListeners.SameBoth();
+        final var event = new TestEvents.One(Result.HANDLED.ordinal());
         m.registerListener(l1);
         m.registerListener(l2);
         m.registerListener(l3);
+        m.registerListener(l4);
 
         // Test
-        m.postEvent(event, defaultListener);
+        m.postEvent(event, TestListeners::defaultLogic);
 
         // Verify
-        assertTrue(event.befored);
-        assertTrue(event.aftered);
-        assertEquals(0, defaultListener.events.size());
-        assertEquals(1, l1.before.size());
-        assertEquals(1, l1.after.size());
-        assertEquals(0, l2.before.size());
-        assertEquals(1, l2.after.size());
+        assertTrue(1 <= event.befored);
+        assertEquals(0, event.defaulted);
+        assertTrue(1 <= event.aftered);
+        assertEquals(1, l1.events.size());
+        assertEquals(1, l2.events.size());
         assertEquals(0, l3.before.size());
-        assertEquals(0, l3.after.size());
+        assertEquals(1, l3.after.size());
+        assertEquals(0, l4.before.size());
+        assertEquals(2, l4.after.size());
     }
 
     @Test
     void postEvent_return() {
         // Setup
         final var m = new EventManager();
-        final var l1 = new TestListeners.BothOne();
-        final var l2 = new TestListeners.BothOne();
-        final var l3 = new TestListeners.BothTwo();
-        final var event = new TestEvents.One(BeforeResult.Return.ordinal());
-        final var defaultListener = new TestListeners.AfterOne();
+        final var l1 = new TestListeners.Before();
+        final var l2 = new TestListeners.After();
+        final var l3 = new TestListeners.Both();
+        final var l4 = new TestListeners.SameBoth();
+        final var event = new TestEvents.One(Result.RETURN.ordinal());
         m.registerListener(l1);
         m.registerListener(l2);
         m.registerListener(l3);
+        m.registerListener(l4);
 
         // Test
-        m.postEvent(event, defaultListener);
+        m.postEvent(event, TestListeners::defaultLogic);
 
         // Verify
-        assertTrue(event.befored);
-        assertFalse(event.aftered);
-        assertEquals(0, defaultListener.events.size());
-        assertEquals(1, l1.before.size());
-        assertEquals(0, l1.after.size());
-        assertEquals(0, l2.before.size());
-        assertEquals(0, l2.after.size());
+        assertTrue(1 <= event.befored);
+        assertEquals(0, event.defaulted);
+        assertEquals(0 , event.aftered);
+        assertEquals(1, l1.events.size());
+        assertEquals(0, l2.events.size());
         assertEquals(0, l3.before.size());
         assertEquals(0, l3.after.size());
+        assertEquals(0, l4.before.size());
+        assertEquals(0, l4.after.size());
     }
 
     @Test
-    void clearStaleRefs() {
+    void postEvent_handled_withNoReturnBefore() {
+        // Setup
+        final var m = new EventManager();
+        final var l1 = new TestListeners.Before();
+        final var l2 = new TestListeners.NoReturnBefore();
+        final var event = new TestEvents.One(Result.HANDLED.ordinal());
+        m.registerListener(l1);
+        m.registerListener(l2);
+
+        // Test
+        m.postEvent(event, TestListeners::defaultLogic);
+
+        // Verify
+        assertTrue(1 <= event.befored);
+        assertEquals(0, event.defaulted);
+        assertEquals(0, event.aftered);
+        assertEquals(1, l1.events.size());
+        assertEquals(1, l2.events.size());
     }
 }

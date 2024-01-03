@@ -3,8 +3,9 @@ package org.legendofdragoon.modloader.events;
 public class TestEvents {
     public static abstract class ATestEvent extends Event {
         public int value;
-        public boolean befored;
-        public boolean aftered;
+        public int befored;
+        public int aftered;
+        public int defaulted;
         public ATestEvent(int ...value) {
             super();
             if (value.length > 0) {
