@@ -141,7 +141,7 @@ class EventManagerTest {
         final var l2 = new TestListeners.After();
         final var l3 = new TestListeners.Both();
         final var l4 = new TestListeners.SameBoth();
-        final var event = new TestEvents.One(Result.RETURN.ordinal());
+        final var event = new TestEvents.One(Result.CANCEL.ordinal());
         m.registerListener(l1);
         m.registerListener(l2);
         m.registerListener(l3);

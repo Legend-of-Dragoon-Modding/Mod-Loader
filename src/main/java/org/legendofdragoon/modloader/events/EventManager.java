@@ -102,7 +102,7 @@ public class EventManager {
   public <T extends Event> void postEvent(final T event, final Listener<T> defaultLogic) {
     final var listeners = (EventListeners<T>) EventManager.this.listeners.get(event.getClass().getTypeName());
     final var result = listeners.before(event);
-    if (result != Result.RETURN) {
+    if (result != Result.CANCEL) {
       if (result == Result.CONTINUE) {
         defaultLogic.action(event);
       }

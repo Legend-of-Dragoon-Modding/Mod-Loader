@@ -134,7 +134,7 @@ class EventListeners<T extends Event> {
       final var invokable =  i.next();
       try {
         final var result = invokable.invoke(event);
-        if (result == Result.HANDLED || result == Result.RETURN) {
+        if (result == Result.HANDLED || result == Result.CANCEL) {
           return (Result) result;
         }
       } catch (Exception e) {

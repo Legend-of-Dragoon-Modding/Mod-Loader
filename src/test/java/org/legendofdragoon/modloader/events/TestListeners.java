@@ -13,7 +13,7 @@ public class TestListeners {
         return switch (event.value) {
             case 0 -> Result.CONTINUE;
             case 1 -> Result.HANDLED;
-            default -> Result.RETURN;
+            default -> Result.CANCEL;
         };
     }
 

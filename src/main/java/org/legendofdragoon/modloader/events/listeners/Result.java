@@ -19,5 +19,5 @@ public enum Result {
      * No After events will be called either.
      * Should only be used in rare cases.
      */
-    RETURN,
+    CANCEL,
 }
