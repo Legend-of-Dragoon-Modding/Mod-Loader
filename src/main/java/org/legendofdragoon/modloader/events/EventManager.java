@@ -2,9 +2,15 @@ package org.legendofdragoon.modloader.events;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.legendofdragoon.modloader.ModManager;
 import org.legendofdragoon.modloader.events.listeners.EventListener;
 import org.legendofdragoon.modloader.events.listeners.Result;
+import org.reflections.Reflections;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
 
+import javax.annotation.Nullable;
+import java.lang.ref.WeakReference;
 import java.util.*;
 
 /***
@@ -28,50 +34,54 @@ public class EventManager {
 
   /***
    * Registers all Event Listeners in the given object.
-   * @param o Object to find Event Listeners in
+   * @param modID Mod ID of the object
+   * @param listener Class to register Event Listeners in
+   * @param instance of the class
    */
-  public void registerListener(final Object o) {
+  public void registerListeners(final String modID, final Class<?> listener, @Nullable Object instance) {
     try {
-      for (final var listener : this.findListeners(o)) {
+      for (final var l : this.findListeners(modID, listener, instance)) {
         try {
-          final var event = this.getEvent(listener);
+          final var event = this.getEvent(l);
           final var name = event.getTypeName();
           synchronized (EventManager.this.listeners) {
             // Locking here as the `register` step could be missed
-            var l = EventManager.this.listeners.get(name);
-            if (l == null) {
-              l = new EventListeners<>();
-              EventManager.this.listeners.put(name, l);
+            var i = EventManager.this.listeners.get(name);
+            if (i == null) {
+              i = new EventListeners<>();
+              EventManager.this.listeners.put(name, i);
             }
-            l.register(event, listener);
+            i.register(event, l);
           }
         } catch (Exception e) {
-          LOGGER.error("Failed to register listener %s", listener.getClass().getTypeName(), e);
+          LOGGER.error("Failed to register listener %s", l.getClass().getTypeName(), e);
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to find listeners for %s", o.getClass().getTypeName(), e);
+      LOGGER.error("Failed to find listeners for %s", listener.getTypeName(), e);
     }
   }
 
   /***
    * Finds all Event Listeners in the given object.
-   * @param o Object to find Event Listeners in
+   * @param modID Mod ID of the object
+   * @param listener Class to register Event Listeners in
+   * @param instance of the class
    * @return Set of Event Listeners found
-   * @throws Exception If no Event Listeners are found or if Event Listeners are invalid
    */
-  private Set<EventListeners.MethodListener> findListeners(final Object o) throws Exception {
+  private Set<EventListeners.MethodListener> findListeners(final String modID, final Class<?> listener, @Nullable Object instance) {
     final Set<EventListeners.MethodListener> result = new HashSet<>();
     // Check to see any of the listener's methods implement either before or after listener
-    final var methods = o.getClass().getDeclaredMethods();
+    final var methods = listener.getDeclaredMethods();
     for (final var m : methods) {
       if (m.isAnnotationPresent(EventListener.class)) {
         final var a = m.getAnnotation(EventListener.class);
-        result.add(new EventListeners.MethodListener(o, m, a.kind(), a.priority()));
+        final var parent = instance == null ? null : new WeakReference<>(instance);
+        result.add(new EventListeners.MethodListener(modID, parent, m, a.kind(), a.priority()));
       }
     }
     if (result.isEmpty()) {
-      throw new Exception("Listener %s does not have an event annotation".formatted(o.getClass().getTypeName()));
+      LOGGER.info("No listeners found in %s".formatted(listener.getTypeName()));
     }
     return result;
   }

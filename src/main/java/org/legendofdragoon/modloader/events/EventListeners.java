@@ -5,10 +5,11 @@ import org.apache.logging.log4j.Logger;
 import org.legendofdragoon.modloader.events.listeners.*;
 import org.legendofdragoon.modloader.events.listeners.Result;
 
+import javax.annotation.Nullable;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 class EventListeners<T extends Event> {
   private static final Logger LOGGER = LogManager.getFormatterLogger(EventManager.class);
@@ -25,35 +26,38 @@ class EventListeners<T extends Event> {
 
   /***
    * A record to store the invokable method for an Event Listener.
+   * @param modID Mod ID of the invokable
    * @param parent Class containing the method
    * @param method Method to invoke
    * @param priority Priority of listener
    */
-  private record Invokable(Object parent, Method method, Priority priority) {
+  private record Invokable<T>(String modID, @Nullable WeakReference<T> parent, Method method, Priority priority) {
     public Object invoke(Object event) throws InvocationTargetException, IllegalAccessException {
-      return this.method.invoke(this.parent, event);
+      final var p = this.parent == null ? null : this.parent.get();
+      return this.method.invoke(p, event);
     }
   }
 
   /***
    * A record to store the Event Listener method, parent, kind, and priority of a listener.
+   * @param modID Mod ID of the listener
    * @param parent Class containing the method
    * @param method Method to invoke
    * @param kind Kind of listener
    * @param priority Priority of listener
    */
-  record MethodListener(Object parent, Method method, Kind kind, Priority priority)  {
+  record MethodListener<T>(String modID, @Nullable WeakReference<T> parent, Method method, Kind kind, Priority priority)  {
     @Override
     public int hashCode() {
-      // Priority is ignored
       return this.toString().hashCode();
     }
 
     @Override
     public boolean equals(Object o) {
-      if (o instanceof MethodListener m) {
+      if (o instanceof MethodListener<?> m) {
         // Priority is ignored
-        return this.parent.getClass().getName().equals(m.parent.getClass().getName()) &&
+        return this.modID.equals(m.modID) &&
+                this.parent.getClass().getName().equals(m.parent.getClass().getName()) &&
                 this.method.getName().equals(m.method.getName()) &&
                 this.kind.name().equals(m.kind.name());
       }
@@ -63,7 +67,7 @@ class EventListeners<T extends Event> {
     @Override
     public String toString() {
       // Priority is ignored
-      return "%s.%s.%s".formatted(this.parent.getClass().getName(), this.method.getName(), this.kind.name());
+      return "%s.%s.%s.%s".formatted(this.modID, this.parent.getClass().getName(), this.method.getName(), this.kind.name());
     }
   }
 
@@ -119,7 +123,7 @@ class EventListeners<T extends Event> {
     if (!m.method.getParameters()[0].getType().isAssignableFrom(event)) {
       throw new Exception("Listener %s.%s does not have a parameter of type %s".formatted(m.getClass().getTypeName(), m.parent.getClass().getName(), m.method.getName(), event.getTypeName()));
     }
-    return new Invokable(m.parent, m.method, m.priority);
+    return new Invokable(m.modID, m.parent, m.method, m.priority);
   }
 
   /***
