@@ -2,8 +2,8 @@ package org.legendofdragoon.modloader.i18n;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.legendofdragoon.modloader.ModContainer;
-import org.legendofdragoon.modloader.ModManager;
+import org.legendofdragoon.modloader.mods.ModContainer;
+import org.legendofdragoon.modloader.mods.ModManager;
 
 import java.io.IOException;
 import java.util.HashMap;

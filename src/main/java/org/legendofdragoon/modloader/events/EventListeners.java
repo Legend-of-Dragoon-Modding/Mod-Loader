@@ -88,6 +88,19 @@ class EventListeners<T extends Event> {
   }
 
   /***
+   * Unregisters a listener from the event manager.
+   * @param modId Mod ID of the listener
+   */
+  public void unregister(String modId) {
+    synchronized (this.before) {
+      this.before.removeIf(i -> i.modID.equals(modId));
+    }
+    synchronized (this.after) {
+      this.after.removeIf(i -> i.modID.equals(modId));
+    }
+  }
+
+  /***
    * Registers a 'before' Event Listener to the event manager.
    * @param event Event the Event Listener is listening for
    * @param listener Event Listener to register

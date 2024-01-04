@@ -1,4 +1,4 @@
-package org.legendofdragoon.modloader;
+package org.legendofdragoon.modloader.mods;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

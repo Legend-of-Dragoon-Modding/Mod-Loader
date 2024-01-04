@@ -1,24 +1,30 @@
-package org.legendofdragoon.modloader;
+package org.legendofdragoon.modloader.mods;
+
+import org.reflections.Reflections;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 public class ModContainer {
   public final String modId;
-  public final Object mod;
+  public final Class<?> mod;
+  public final Reflections reflections;
   ModState state = ModState.INITIALIZED;
+  public final ClassLoader classLoader;
+  public final URL url;
 
-  public ModContainer(final String modId, final Object mod) {
+  public ModContainer(String modId, Class<?> modClass, Reflections reflections, ClassLoader classLoader, URL url) {
     this.modId = modId;
-    this.mod = mod;
+    this.mod = modClass;
+    this.reflections = reflections;
+    this.classLoader = classLoader;
+    this.url = url;
   }
 
   public URL getResource(final String path) {
-    return this.mod.getClass().getClassLoader().getResource(this.modId + '/' + path);
+    return this.mod.getClassLoader().getResource(this.modId + '/' + path);
   }
 
   /**
@@ -69,5 +75,9 @@ public class ModContainer {
     }
 
     return lang;
+  }
+
+  public Object Instance() throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    return this.mod.getDeclaredConstructor().newInstance();
   }
 }

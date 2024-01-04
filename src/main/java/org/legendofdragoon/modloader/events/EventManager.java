@@ -2,12 +2,8 @@ package org.legendofdragoon.modloader.events;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.legendofdragoon.modloader.ModManager;
 import org.legendofdragoon.modloader.events.listeners.EventListener;
 import org.legendofdragoon.modloader.events.listeners.Result;
-import org.reflections.Reflections;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
 
 import javax.annotation.Nullable;
 import java.lang.ref.WeakReference;
@@ -63,21 +59,31 @@ public class EventManager {
   }
 
   /***
+   * Unregisters all Event Listeners in the given object.
+   * @param modId Mod ID of the object
+   */
+  public void unregister(String modId) {
+    for (final var listeners : this.listeners.values()) {
+      listeners.unregister(modId);
+    }
+  }
+
+  /***
    * Finds all Event Listeners in the given object.
    * @param modID Mod ID of the object
    * @param listener Class to register Event Listeners in
    * @param instance of the class
    * @return Set of Event Listeners found
    */
-  private Set<EventListeners.MethodListener> findListeners(final String modID, final Class<?> listener, @Nullable Object instance) {
-    final Set<EventListeners.MethodListener> result = new HashSet<>();
+  private Set<EventListeners.MethodListener<?>> findListeners(final String modID, final Class<?> listener, @Nullable Object instance) {
+    final Set<EventListeners.MethodListener<?>> result = new HashSet<>();
     // Check to see any of the listener's methods implement either before or after listener
     final var methods = listener.getDeclaredMethods();
     for (final var m : methods) {
       if (m.isAnnotationPresent(EventListener.class)) {
         final var a = m.getAnnotation(EventListener.class);
         final var parent = instance == null ? null : new WeakReference<>(instance);
-        result.add(new EventListeners.MethodListener(modID, parent, m, a.kind(), a.priority()));
+        result.add(new EventListeners.MethodListener<>(modID, parent, m, a.kind(), a.priority()));
       }
     }
     if (result.isEmpty()) {
@@ -95,7 +101,7 @@ public class EventManager {
    */
   @SuppressWarnings("unchecked")
   private <T extends Event>  Class<T> getEvent(Object listener) throws Exception {
-    if (listener instanceof EventListeners.MethodListener m) {
+    if (listener instanceof EventListeners.MethodListener<?> m) {
       final var method = m.method();
       if (method.isAnnotationPresent(EventListener.class)) {
         return (Class<T>) method.getAnnotation(EventListener.class).event();

@@ -1,4 +1,4 @@
-package org.legendofdragoon.modloader;
+package org.legendofdragoon.modloader.mods;
 
 public enum ModState {
   INITIALIZED,

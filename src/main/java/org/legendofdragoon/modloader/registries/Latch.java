@@ -1,4 +1,4 @@
-package org.legendofdragoon.modloader;
+package org.legendofdragoon.modloader.registries;
 
 import java.util.function.Supplier;
 

@@ -1,7 +1,6 @@
 package org.legendofdragoon.modloader.registries;
 
-import org.legendofdragoon.modloader.Latch;
-import org.legendofdragoon.modloader.ModNotLoadedException;
+import org.legendofdragoon.modloader.mods.ModNotLoadedException;
 
 import java.util.function.Supplier;
 

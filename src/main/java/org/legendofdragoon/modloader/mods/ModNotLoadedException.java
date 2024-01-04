@@ -1,4 +1,4 @@
-package org.legendofdragoon.modloader;
+package org.legendofdragoon.modloader.mods;
 
 public class ModNotLoadedException extends RuntimeException {
   public ModNotLoadedException(final String message) {
