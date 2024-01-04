@@ -28,7 +28,6 @@ public class ModManager {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ModManager.class);
 
   private final Map<String, ModContainer> allMods = new HashMap<>();
-  private final Map<String, Class<?>> allModClasses = new HashMap<>();
 
   private final Map<String, ModContainer> loadedMods = new HashMap<>();
 
@@ -71,7 +70,7 @@ public class ModManager {
         } else {
           final var modClass = modClasses.iterator().next();
           final var modID = modClasses.iterator().next().getDeclaredAnnotation(Mod.class).id();
-          if (ModManager.this.allModClasses.containsKey(modID)) {
+          if (ModManager.this.loadedMods.containsKey(modID)) {
             LOGGER.error("Duplicate mod ID %s! Skipping.", modID);
           } else {
             LOGGER.info("Found mod: %s", modID);
