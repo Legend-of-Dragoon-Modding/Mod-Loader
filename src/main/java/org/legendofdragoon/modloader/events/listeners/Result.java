@@ -20,7 +20,7 @@ public enum Result {
      * Should only be used in rare cases.
      */
     CANCEL,
-    /***
+    /**
      * The listener should be removed and not called again.
      */
     DEREGISTER,

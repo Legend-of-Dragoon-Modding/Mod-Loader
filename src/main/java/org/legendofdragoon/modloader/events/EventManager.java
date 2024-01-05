@@ -2,6 +2,7 @@ package org.legendofdragoon.modloader.events;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.legendofdragoon.modloader.Mod;
 import org.legendofdragoon.modloader.ModManager;
 import org.legendofdragoon.modloader.events.listeners.EventListener;
 import org.legendofdragoon.modloader.events.listeners.Result;
@@ -11,28 +12,61 @@ import org.reflections.util.ConfigurationBuilder;
 
 import javax.annotation.Nullable;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.function.Consumer;
 
-/***
+/**
  * The Event Manager is responsible for registering event listeners and managing sending Events.
  */
 public class EventManager {
-
   private static final Logger LOGGER = LogManager.getFormatterLogger(EventManager.class);
 
-  /***
+  /**
    * The map of event listeners.
    * Key: Event Type Name
    * Value: Event Listeners
    */
   private final Map<String, EventListeners<?>> listeners = Collections.synchronizedMap(new HashMap<>());
 
-  /***
+  public class Access {
+    private Access() { }
+
+    public void initialize(final ModManager mods) {
+      LOGGER.info("Scanning for event consumers...");
+
+      final ConfigurationBuilder config = new ConfigurationBuilder()
+              .addClassLoaders(this.getClass().getClassLoader())
+              .addUrls(ClasspathHelper.forPackage("legend"));
+      final Reflections reflections = new Reflections(mods.addModsToReflectionsConfig(config));
+      for(final Class<?> mod : reflections.getTypesAnnotatedWith(Mod.class)) {
+        Object instance = null;
+        try {
+          instance = mod.getEnclosingConstructor().newInstance();
+        } catch (Exception e) {
+          LOGGER.info("Failed to create instance of %s".formatted(mod.getTypeName()), e);
+        }
+        // TODO get a mod ID for each mod
+        EventManager.this.registerListeners("", mod, instance);
+      }
+    }
+
+    public void reset() {
+      for(final var l : EventManager.this.listeners.values()) {
+        l.reset();
+      }
+      EventManager.this.listeners.clear();
+    }
+  }
+
+  /**
    * Creates a new Event Manager.
    */
-  public EventManager() {}
+  public EventManager(final Consumer<Access> access) {
+    access.accept(new Access());
+  }
 
-  /***
+  /**
    * Registers all Event Listeners in the given object.
    * @param modID Mod ID of the object
    * @param listener Class to register Event Listeners in
@@ -62,22 +96,34 @@ public class EventManager {
     }
   }
 
-  /***
+  /**
+   * Unregisters all Event Listeners in the given mod IDs.
+   * @param modIDs Mod IDs of the package
+   */
+  public void unregisterListeners(final String ...modIDs) {
+    for (final var modID : modIDs) {
+      for (final var l : EventManager.this.listeners.values()) {
+        l.unregister(modID);
+      }
+    }
+  }
+
+  /**
    * Finds all Event Listeners in the given object.
    * @param modID Mod ID of the object
    * @param listener Class to register Event Listeners in
    * @param instance of the class
    * @return Set of Event Listeners found
    */
-  private Set<EventListeners.MethodListener> findListeners(final String modID, final Class<?> listener, @Nullable Object instance) {
-    final Set<EventListeners.MethodListener> result = new HashSet<>();
+  private Set<EventListeners.MethodListener<?>> findListeners(final String modID, final Class<?> listener, @Nullable Object instance) {
+    final Set<EventListeners.MethodListener<?>> result = new HashSet<>();
     // Check to see any of the listener's methods implement either before or after listener
     final var methods = listener.getDeclaredMethods();
     for (final var m : methods) {
       if (m.isAnnotationPresent(EventListener.class)) {
         final var a = m.getAnnotation(EventListener.class);
         final var parent = instance == null ? null : new WeakReference<>(instance);
-        result.add(new EventListeners.MethodListener(modID, parent, m, a.kind(), a.priority()));
+        result.add(new EventListeners.MethodListener<>(modID, parent, m, a.kind(), a.priority()));
       }
     }
     if (result.isEmpty()) {
@@ -86,7 +132,7 @@ public class EventManager {
     return result;
   }
 
-  /***
+  /**
    * Gets the event type for the given listener.
    * @param listener Listener to get event type for
    * @return Event type for the given listener
@@ -95,7 +141,7 @@ public class EventManager {
    */
   @SuppressWarnings("unchecked")
   private <T extends Event>  Class<T> getEvent(Object listener) throws Exception {
-    if (listener instanceof EventListeners.MethodListener m) {
+    if (listener instanceof EventListeners.MethodListener<?> m) {
       final var method = m.method();
       if (method.isAnnotationPresent(EventListener.class)) {
         return (Class<T>) method.getAnnotation(EventListener.class).event();
@@ -104,7 +150,7 @@ public class EventManager {
     throw new Exception("Listener %s does not have an event annotation".formatted(listener.getClass().getTypeName()));
   }
 
-  /***
+  /**
    * Posts an Event to all registered listeners.
    * @param event Event to post
    * @param defaultLogic Default logic to run if no 'before' listeners stop execution
@@ -122,7 +168,7 @@ public class EventManager {
     }
   }
 
-  /***
+  /**
    * Gets the Event Listeners for the given event.
    * @param event Event to get Event Listeners for
    * @return Event Listeners for the given event
@@ -132,7 +178,7 @@ public class EventManager {
     return EventManager.this.listeners.get(event.getTypeName());
   }
 
-  /***
+  /**
    * Listener for the default logic to run if no 'before' listeners stop execution.
    * @param <T> Event type
    */

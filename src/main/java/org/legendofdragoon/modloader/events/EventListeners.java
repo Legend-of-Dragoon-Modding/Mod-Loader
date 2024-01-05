@@ -14,17 +14,30 @@ import java.util.*;
 class EventListeners<T extends Event> {
   private static final Logger LOGGER = LogManager.getFormatterLogger(EventManager.class);
 
-  /***
+  /**
    * The prioritized set of 'before' Event Listeners.
    */
   private final List<Invokable> before = Collections.synchronizedList(new ArrayList<>());
 
-  /***
+  /**
    * The prioritized set of 'after' Event Listeners.
    */
   private final List<Invokable> after = Collections.synchronizedList(new ArrayList<>());
 
-  /***
+  /**
+   * Unregisters all Event Listeners for the given mod ID.
+   * @param modID Mod ID of the Event Listeners to unregister
+   */
+  public void unregister(String modID) {
+    synchronized (this.before) {
+      this.before.removeIf(i -> i.modID.equals(modID));
+    }
+    synchronized (this.after) {
+      this.after.removeIf(i -> i.modID.equals(modID));
+    }
+  }
+
+  /**
    * A record to store the invokable method for an Event Listener.
    * @param modID Mod ID of the invokable
    * @param parent Class containing the method
@@ -38,7 +51,7 @@ class EventListeners<T extends Event> {
     }
   }
 
-  /***
+  /**
    * A record to store the Event Listener method, parent, kind, and priority of a listener.
    * @param modID Mod ID of the listener
    * @param parent Class containing the method
@@ -71,7 +84,7 @@ class EventListeners<T extends Event> {
     }
   }
 
-  /***
+  /**
    * Registers a listener to the event manager.
    * @param event Event the Event Listener is listening for
    * @param listener Event Listener to register
@@ -87,7 +100,7 @@ class EventListeners<T extends Event> {
     }
   }
 
-  /***
+  /**
    * Registers a 'before' Event Listener to the event manager.
    * @param event Event the Event Listener is listening for
    * @param listener Event Listener to register
@@ -99,7 +112,7 @@ class EventListeners<T extends Event> {
     this.before.sort(Comparator.comparing(o -> o.priority));
   }
 
-  /***
+  /**
    * Registers an 'after' Event Listener to the event manager.
    * @param event Event the Event Listener is listening for
    * @param listener Event Listener to register
@@ -111,7 +124,7 @@ class EventListeners<T extends Event> {
     this.after.sort(Comparator.comparing(o -> o.priority));
   }
 
-  /***
+  /**
    * Creates an Invokable for the Event Listener.
    * @param m Event Listener to create Invokable for
    * @param event Event the Event Listener is listening for
@@ -126,7 +139,7 @@ class EventListeners<T extends Event> {
     return new Invokable(m.modID, m.parent, m.method, m.priority);
   }
 
-  /***
+  /**
    * Invokes all 'before' Event Listeners for the event.
    * @param event The posted Event
    * @return Whether to continue the processing of the event.
@@ -152,7 +165,7 @@ class EventListeners<T extends Event> {
     return Result.CONTINUE;
   }
 
-  /***
+  /**
    * Invokes all 'after' Event Listeners for the event.
    * @param event The posted Event
    */
@@ -170,7 +183,7 @@ class EventListeners<T extends Event> {
     }
   }
 
-  /***
+  /**
    * Returns the 'before' Event Listeners for the event.
    * @return The 'before' Event Listeners for the event.
    */
@@ -178,7 +191,7 @@ class EventListeners<T extends Event> {
     return this.before;
   }
 
-  /***
+  /**
    * Returns the 'after' Event Listeners for the event.
    * @return The 'after' Event Listeners for the event.
    */
