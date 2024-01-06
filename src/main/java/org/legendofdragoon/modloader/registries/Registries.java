@@ -1,5 +1,6 @@
 package org.legendofdragoon.modloader.registries;
 
+import org.legendofdragoon.modloader.events.Event;
 import org.legendofdragoon.modloader.events.EventManager;
 import org.legendofdragoon.modloader.events.registries.RegistryEvent;
 
@@ -46,7 +47,7 @@ public class Registries {
         throw new IllegalArgumentException("Unknown registry " + registry);
       }
 
-      Registries.this.events.postEvent(Registries.this.registryEvents.get(mutableRegistry).apply(mutableRegistry));
+      Registries.this.events.postEvent(Registries.this.registryEvents.get(mutableRegistry).apply(mutableRegistry), (Event event) -> {});
       mutableRegistry.lock();
       this.initialized.add(mutableRegistry);
     }
