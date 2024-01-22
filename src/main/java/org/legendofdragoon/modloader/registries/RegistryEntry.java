@@ -10,4 +10,9 @@ public class RegistryEntry {
   public RegistryId getRegistryId() {
     return this.id;
   }
+
+  @Override
+  public String toString() {
+    return this.getClass().getSimpleName() + ' ' + this.id;
+  }
 }
