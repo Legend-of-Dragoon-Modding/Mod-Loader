@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class LangManager {
-  private static final Logger LOGGER = LogManager.getFormatterLogger();
+  private static final Logger LOGGER = LogManager.getFormatterLogger(LangManager.class);
 
   private final Map<String, String> translations = new HashMap<>();
 
