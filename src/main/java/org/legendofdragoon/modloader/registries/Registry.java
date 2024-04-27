@@ -1,12 +1,14 @@
 package org.legendofdragoon.modloader.registries;
 
+import org.apache.commons.collections4.map.ReferenceMap;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 public class Registry<Type extends RegistryEntry> implements Iterable<RegistryId> {
   protected final Map<RegistryId, Type> entries = new HashMap<>();
-  protected final Map<RegistryId, RegistryDelegate<Type>> delegates = new HashMap<>();
+  protected final Map<RegistryId, RegistryDelegate<Type>> delegates = new ReferenceMap<>();
 
   public boolean hasEntry(final RegistryId id) {
     return this.entries.containsKey(id);
