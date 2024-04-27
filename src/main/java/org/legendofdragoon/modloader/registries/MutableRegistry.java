@@ -29,6 +29,5 @@ public class MutableRegistry<Type extends RegistryEntry> extends Registry<Type> 
     }
 
     this.entries.clear();
-    this.delegates.clear();
   }
 }
