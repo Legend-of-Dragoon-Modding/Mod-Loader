@@ -82,11 +82,13 @@ public class EventManager {
           this.listeners.put(new Consumer<>() {
             @Override
             public void accept(final Event event) {
-              if(ref.get() == null) {
+              final Object inst = ref.get();
+
+              if(inst == null) {
                 EventManager.this.staleListeners.add(this);
               } else {
                 try {
-                  method.invoke(ref.get(), event);
+                  method.invoke(inst, event);
                 } catch(final IllegalAccessException | InvocationTargetException e) {
                   LOGGER.error("Failed to deliver event", e);
                 }
