@@ -6,6 +6,7 @@ import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
@@ -31,8 +32,8 @@ public class ModManager {
   private final Set<String> allModIds = Collections.unmodifiableSet(this.allModClasses.keySet());
 
   private final List<URL> loadedModUrls = new ArrayList<>();
-  private ClassLoader loadedModClassLoader;
   private final Map<String, ModContainer> loadedModInstances = new HashMap<>();
+  private final Map<ClassLoader, ModContainer> loadedModInstancesByClassloader = new HashMap<>();
   private final Collection<ModContainer> unmodifiableLoadedModInstances = Collections.unmodifiableCollection(this.loadedModInstances.values());
 
   public ModManager(final Consumer<Access> access) {
@@ -55,6 +56,14 @@ public class ModManager {
     return this.unmodifiableLoadedModInstances;
   }
 
+  public void setActiveModByClassloader(@Nullable final ClassLoader classLoader) {
+    if(classLoader == null || classLoader == ModManager.class.getClassLoader()) {
+      ModContainer.setActiveMod(null);
+    } else {
+      ModContainer.setActiveMod(this.loadedModInstancesByClassloader.get(classLoader));
+    }
+  }
+
   public class Access {
     private Access() { }
 
@@ -63,7 +72,7 @@ public class ModManager {
       Files.createDirectories(modsDir);
 
       LOGGER.info("Scanning for mods...");
-      final Collection<URL> urlList = new ArrayList<>();
+      final List<URL> urlList = new ArrayList<>();
 
       try(final DirectoryStream<Path> jars = Files.newDirectoryStream(modsDir, "*.jar")) {
         for(final Path jar : jars) {
@@ -71,14 +80,18 @@ public class ModManager {
         }
       }
 
-      final ClassLoader allModClassLoader = new URLClassLoader(urlList.toArray(URL[]::new), ModManager.class.getClassLoader());
+      final ClassLoader[] modClassLoaders = new ClassLoader[urlList.size()];
+      for(int i = 0; i < modClassLoaders.length; i++) {
+        modClassLoaders[i] = new URLClassLoader(new URL[] {urlList.get(i)});
+      }
+
       ModManager.this.allModUrls.clear();
 
       final Reflections reflections = new Reflections(
         new ConfigurationBuilder()
           .addUrls(this.getClass().getClassLoader().getResource(""))
           .addClassLoaders(this.getClass().getClassLoader()).addUrls(ClasspathHelper.forPackage("legend"))
-          .addClassLoaders(allModClassLoader).addUrls(urlList)
+          .addClassLoaders(modClassLoaders).addUrls(urlList)
       );
 
       final Set<Class<?>> modClasses = reflections.getTypesAnnotatedWith(Mod.class);
@@ -119,7 +132,6 @@ public class ModManager {
         }
       }
 
-      ModManager.this.loadedModClassLoader = new URLClassLoader(ModManager.this.loadedModUrls.toArray(URL[]::new), ModManager.class.getClassLoader());
       return missingModIds;
     }
 
@@ -127,6 +139,7 @@ public class ModManager {
       try {
         final ModContainer modContainer = new ModContainer(modId, ModManager.this.allModClasses.get(modId).getDeclaredConstructor().newInstance());
         ModManager.this.loadedModInstances.put(modId, modContainer);
+        ModManager.this.loadedModInstancesByClassloader.put(modContainer.classLoader, modContainer);
         ModManager.this.loadedModUrls.add(ModManager.this.allModUrls.get(modId));
         LOGGER.info("Loaded mod: %s", modId);
       } catch(final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException ex) {
@@ -143,8 +156,8 @@ public class ModManager {
 
     public void reset() {
       ModManager.this.loadedModUrls.clear();
-      ModManager.this.loadedModClassLoader = null;
       ModManager.this.loadedModInstances.clear();
+      ModManager.this.loadedModInstancesByClassloader.clear();
     }
   }
 
@@ -152,6 +165,6 @@ public class ModManager {
     return builder
       .addUrls(this.getClass().getClassLoader().getResource("")) // Find mods in the current project (finds CoreMod in SC, mod in SCDK)
       .addClassLoaders(this.getClass().getClassLoader()).addUrls(ClasspathHelper.forPackage("legend")) // Finds CoreMod in SCDK
-      .addClassLoaders(this.loadedModClassLoader).addUrls(this.loadedModUrls); // Finds mods in mods folder
+      .addClassLoaders(this.loadedModInstances.values().stream().map(ModContainer::getClassLoader).toArray(ClassLoader[]::new)).addUrls(this.loadedModUrls); // Finds mods in mods folder
   }
 }

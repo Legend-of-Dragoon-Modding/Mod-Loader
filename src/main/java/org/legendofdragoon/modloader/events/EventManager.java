@@ -8,21 +8,21 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
 import javax.annotation.Nullable;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class EventManager {
   private static final Logger LOGGER = LogManager.getFormatterLogger(EventManager.class);
 
-  private final Map<Consumer<Event>, Class<?>> listeners = new ConcurrentHashMap<>();
-  private final Set<Consumer<Event>> staleListeners = Collections.synchronizedSet(new HashSet<>());
+  private final Map<Class<?>, Set<EventBinding>> listeners = new HashMap<>();
+  private final Set<EventBinding> staleListeners = new HashSet<>();
+
+  private ModManager modManager;
 
   public EventManager(final Consumer<Access> access) {
     access.accept(new Access());
@@ -32,6 +32,8 @@ public class EventManager {
     private Access() { }
 
     public void initialize(final ModManager mods) {
+      EventManager.this.modManager = mods;
+
       LOGGER.info("Scanning for event consumers...");
 
       final ConfigurationBuilder config = new ConfigurationBuilder()
@@ -64,37 +66,15 @@ public class EventManager {
           continue;
         }
 
-        if(!Event.class.isAssignableFrom(method.getParameters()[0].getType())) {
+        final Class<?> eventType = method.getParameters()[0].getType();
+
+        if(!Event.class.isAssignableFrom(eventType)) {
           LOGGER.warn("Event listener %s must have event parameter", listener);
           continue;
         }
 
-        if(instance == null) {
-          this.listeners.put(event -> {
-            try {
-              method.invoke(null, event);
-            } catch(final IllegalAccessException | InvocationTargetException e) {
-              LOGGER.error("Failed to deliver event", e);
-            }
-          }, method.getParameters()[0].getType());
-        } else {
-          final WeakReference<Object> ref = new WeakReference<>(instance);
-          this.listeners.put(new Consumer<>() {
-            @Override
-            public void accept(final Event event) {
-              final Object inst = ref.get();
-
-              if(inst == null) {
-                EventManager.this.staleListeners.add(this);
-              } else {
-                try {
-                  method.invoke(inst, event);
-                } catch(final IllegalAccessException | InvocationTargetException e) {
-                  LOGGER.error("Failed to deliver event", e);
-                }
-              }
-            }
-          }, method.getParameters()[0].getType());
+        synchronized(this.listeners) {
+          this.listeners.computeIfAbsent(eventType, k -> new HashSet<>()).add(new EventBinding(eventType, listener, instance, method));
         }
       }
     }
@@ -105,17 +85,37 @@ public class EventManager {
   }
 
   public <T extends Event> T postEvent(final T event) {
-    for(final var entry : this.listeners.entrySet()) {
-      if(entry.getValue().isInstance(event)) {
-        entry.getKey().accept(event);
+    synchronized(this.listeners) {
+      final Set<EventBinding> bindings = this.listeners.get(event.getClass());
+
+      if(bindings != null) {
+        for(final EventBinding binding : bindings) {
+          try {
+            this.modManager.setActiveModByClassloader(binding.listenerClass.getClassLoader());
+            binding.execute(event);
+          } catch(final IllegalAccessException | InvocationTargetException e) {
+            LOGGER.error("Failed to deliver event", e);
+          }
+
+          if(binding.isInvalid()) {
+            this.staleListeners.add(binding);
+          }
+        }
       }
+
+      this.modManager.setActiveModByClassloader(null);
     }
 
     return event;
   }
 
   public void clearStaleRefs() {
-    this.listeners.keySet().removeAll(this.staleListeners);
-    this.staleListeners.clear();
+    synchronized(this.listeners) {
+      for(final EventBinding binding : this.staleListeners) {
+        this.listeners.get(binding.eventClass).remove(binding);
+      }
+
+      this.staleListeners.clear();
+    }
   }
 }

@@ -1,5 +1,6 @@
 package org.legendofdragoon.modloader;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
@@ -10,15 +11,24 @@ import java.util.Properties;
 public class ModContainer {
   public final String modId;
   public final Object mod;
+  public final ClassLoader classLoader;
   ModState state = ModState.INITIALIZED;
+
+  /** Set to the mod that owns the event handler that is currently executing (null for internal mods) */
+  private static ModContainer activeMod;
 
   public ModContainer(final String modId, final Object mod) {
     this.modId = modId;
     this.mod = mod;
+    this.classLoader = mod.getClass().getClassLoader();
+  }
+
+  public ClassLoader getClassLoader() {
+    return this.classLoader;
   }
 
   public URL getResource(final String path) {
-    return this.mod.getClass().getClassLoader().getResource(this.modId + '/' + path);
+    return this.classLoader.getResource(this.modId + '/' + path);
   }
 
   /**
@@ -69,5 +79,13 @@ public class ModContainer {
     }
 
     return lang;
+  }
+
+  public static void setActiveMod(@Nullable final ModContainer mod) {
+    activeMod = mod;
+  }
+
+  public static ModContainer getActiveMod() {
+    return activeMod;
   }
 }

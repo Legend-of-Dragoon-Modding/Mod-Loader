@@ -1,5 +1,7 @@
 package org.legendofdragoon.modloader.registries;
 
+import org.legendofdragoon.modloader.ModContainer;
+
 public class MutableRegistry<Type extends RegistryEntry> extends Registry<Type> {
   private boolean locked;
 
@@ -10,6 +12,10 @@ public class MutableRegistry<Type extends RegistryEntry> extends Registry<Type> 
   public Type register(final RegistryId id, final Type entry) {
     if(this.locked) {
       throw new RegistryLockedException();
+    }
+
+    if(ModContainer.getActiveMod() != null && !ModContainer.getActiveMod().modId.equals(id.modId())) {
+      throw new IncorrectModIdException("Mod " + ModContainer.getActiveMod().modId + " tried to register " + this + " entry " + id.entryId() + " for incorrect mod ID " + id.modId());
     }
 
     if(this.entries.containsKey(id)) {
