@@ -7,8 +7,13 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class Registry<Type extends RegistryEntry> implements Iterable<RegistryId> {
+  public final RegistryId id;
   protected final Map<RegistryId, Type> entries = new HashMap<>();
   protected final Map<RegistryId, RegistryDelegate<Type>> delegates = new ReferenceMap<>();
+
+  public Registry(final RegistryId id) {
+    this.id = id;
+  }
 
   public boolean hasEntry(final RegistryId id) {
     return this.entries.containsKey(id);
@@ -26,8 +31,17 @@ public class Registry<Type extends RegistryEntry> implements Iterable<RegistryId
     return this.getEntry(new RegistryId(modId, entryId));
   }
 
+  public int size() {
+    return this.entries.size();
+  }
+
   @Override
   public Iterator<RegistryId> iterator() {
     return this.entries.keySet().iterator();
+  }
+
+  @Override
+  public String toString() {
+    return "Registry " + this.id;
   }
 }

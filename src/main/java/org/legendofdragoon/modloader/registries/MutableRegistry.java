@@ -3,6 +3,10 @@ package org.legendofdragoon.modloader.registries;
 public class MutableRegistry<Type extends RegistryEntry> extends Registry<Type> {
   private boolean locked;
 
+  public MutableRegistry(final RegistryId id) {
+    super(id);
+  }
+
   public Type register(final RegistryId id, final Type entry) {
     if(this.locked) {
       throw new RegistryLockedException();
