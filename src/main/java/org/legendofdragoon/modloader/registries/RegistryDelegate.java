@@ -28,7 +28,7 @@ public class RegistryDelegate<Type extends RegistryEntry> {
 
   public Type get() {
     if(!this.isValid()) {
-      throw new ModNotLoadedException("Mod " + this.id.modId() + " is not loaded");
+      throw new ModNotLoadedException(this.id + " not found in " + this.registry);
     }
 
     return this.latch.get();
