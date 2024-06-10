@@ -48,7 +48,7 @@ public class Registries implements Iterable<Registry<?>> {
 
     private final Set<Registry<?>> initialized = new HashSet<>();
 
-    public <T extends RegistryEntry> void initialize(final Registry<?> registry) {
+    public void initialize(final Registry<?> registry) {
       if(this.initialized.contains(registry)) {
         throw new IllegalStateException("Registry " + registry + " already initialized");
       }

@@ -22,7 +22,7 @@ public class MutableRegistry<Type extends RegistryEntry> extends Registry<Type> 
       throw new DuplicateRegistryIdException("Registry ID " + id + " already registered");
     }
 
-    entry.setRegistryId(id);
+    entry.setRegistry(this, id);
     this.entries.put(id, entry);
     return entry;
   }

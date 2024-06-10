@@ -34,6 +34,10 @@ public class RegistryDelegate<Type extends RegistryEntry> {
     return this.latch.get();
   }
 
+  public String getTranslationKey() {
+    return this.get().getTranslationKey();
+  }
+
   @Override
   public boolean equals(final Object obj) {
     if(obj instanceof final RegistryDelegate<?> other) {
