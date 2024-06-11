@@ -24,7 +24,7 @@ public class Registry<Type extends RegistryEntry> implements Iterable<RegistryId
   }
 
   public RegistryDelegate<Type> getEntry(final String id) {
-    return this.getEntry(RegistryId.of(id));
+    return this.getEntry(new RegistryId(id));
   }
 
   public RegistryDelegate<Type> getEntry(final String modId, final String entryId) {
