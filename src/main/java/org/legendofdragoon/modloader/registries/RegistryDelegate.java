@@ -46,4 +46,13 @@ public class RegistryDelegate<Type extends RegistryEntry> {
 
     return false;
   }
+
+  @Override
+  public String toString() {
+    if(!this.isValid()) {
+      return "Invalid delegate[" + this.id + ']';
+    }
+
+    return "Delegate[" + this.get() + ']';
+  }
 }
