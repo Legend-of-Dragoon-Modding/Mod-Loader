@@ -18,7 +18,7 @@ public class RegistryEntry {
   }
 
   public String getTranslationKey(final String type) {
-    return this.registry.id.modId() + '.' + this.registry.id.entryId() + '.' + this.id.entryId() + '.' + type;
+    return this.id.modId() + '.' + this.registry.id.entryId() + '.' + this.id.entryId() + '.' + type;
   }
 
   @Override
