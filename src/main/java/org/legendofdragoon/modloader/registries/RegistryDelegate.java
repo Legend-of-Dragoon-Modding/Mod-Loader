@@ -5,7 +5,7 @@ import org.legendofdragoon.modloader.ModNotLoadedException;
 
 import java.util.function.Supplier;
 
-public class RegistryDelegate<Type extends RegistryEntry> {
+public class RegistryDelegate<Type extends RegistryEntry> implements Supplier<Type> {
   private final RegistryId id;
   private final Registry<Type> registry;
   private final Class<Registry<Type>> cls;
@@ -32,6 +32,10 @@ public class RegistryDelegate<Type extends RegistryEntry> {
     }
 
     return this.latch.get();
+  }
+
+  public RegistryId getId() {
+    return this.id;
   }
 
   public String getTranslationKey() {
