@@ -10,8 +10,12 @@ import org.reflections.util.ConfigurationBuilder;
 import javax.annotation.Nullable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -19,7 +23,7 @@ import java.util.function.Consumer;
 public class EventManager {
   private static final Logger LOGGER = LogManager.getFormatterLogger(EventManager.class);
 
-  private final Map<Class<?>, Set<EventBinding>> listeners = new HashMap<>();
+  private final Map<Class<?>, List<EventBinding>> listeners = new HashMap<>();
   private final Set<EventBinding> staleListeners = new HashSet<>();
 
   private ModManager modManager;
@@ -44,6 +48,10 @@ public class EventManager {
 
       for(final Class<?> listener : listeners) {
         EventManager.this.register(listener, null);
+      }
+
+      for(final var entry : EventManager.this.listeners.entrySet()) {
+        entry.getValue().sort(Comparator.comparing((EventBinding e) -> e.priority).reversed());
       }
     }
 
@@ -74,7 +82,9 @@ public class EventManager {
         }
 
         synchronized(this.listeners) {
-          this.listeners.computeIfAbsent(eventType, k -> new HashSet<>()).add(new EventBinding(eventType, listener, instance, method));
+          final List<EventBinding> bindings = this.listeners.computeIfAbsent(eventType, k -> new ArrayList<>());
+          bindings.add(new EventBinding(eventType, listener, method.getAnnotation(EventListener.class).priority(), instance, method));
+          bindings.sort(Comparator.comparing((EventBinding e) -> e.priority).reversed());
         }
       }
     }
@@ -86,10 +96,12 @@ public class EventManager {
 
   public <T extends Event> T postEvent(final T event) {
     synchronized(this.listeners) {
-      final Set<EventBinding> bindings = this.listeners.get(event.getClass());
+      final List<EventBinding> bindings = this.listeners.get(event.getClass());
 
       if(bindings != null) {
-        for(final EventBinding binding : bindings) {
+        for(int i = 0; i < bindings.size(); i++) {
+          final EventBinding binding = bindings.get(i);
+
           try {
             this.modManager.setActiveModByClassloader(binding.listenerClass.getClassLoader());
             binding.execute(event);

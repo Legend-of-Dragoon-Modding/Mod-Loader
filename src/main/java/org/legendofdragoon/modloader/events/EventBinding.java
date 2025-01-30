@@ -8,15 +8,17 @@ import java.lang.reflect.Method;
 public class EventBinding {
   public final Class<?> eventClass;
   public final Class<?> listenerClass;
+  public final Priority priority;
   private final WeakReference<Object> instance;
   private final Method method;
   private boolean invalid;
 
-  public EventBinding(final Class<?> eventClass, final Class<?> listenerClass, @Nullable final Object instance, final Method method) {
+  public EventBinding(final Class<?> eventClass, final Class<?> listenerClass, final Priority priority, @Nullable final Object instance, final Method method) {
     this.eventClass = eventClass;
     this.listenerClass = listenerClass;
     this.instance = instance != null ? new WeakReference<>(instance) : null;
     this.method = method;
+    this.priority = priority;
   }
 
   public void execute(final Event event) throws InvocationTargetException, IllegalAccessException {
