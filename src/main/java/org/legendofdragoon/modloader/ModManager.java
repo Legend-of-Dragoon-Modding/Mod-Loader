@@ -197,6 +197,8 @@ public class ModManager {
         LOGGER.warn("FAILED TO LOAD MOD: %s", modId);
         LOGGER.warn("Exception:", ex);
         ModManager.this.failedToLoad.put(modId, "Failed to create mod instance");
+        ModManager.this.allModClasses.remove(modId);
+        ModManager.this.allModUrls.remove(modId);
       }
     }
 
