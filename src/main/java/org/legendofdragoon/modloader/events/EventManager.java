@@ -102,11 +102,13 @@ public class EventManager {
         for(int i = 0; i < bindings.size(); i++) {
           final EventBinding binding = bindings.get(i);
 
-          try {
-            this.modManager.setActiveModByClassloader(binding.listenerClass.getClassLoader());
-            binding.execute(event);
-          } catch(final IllegalAccessException | InvocationTargetException e) {
-            LOGGER.error("Failed to deliver event", e);
+          if(event.shouldPropagate()) { // Don't exit immediately so that stale listeners still get cleared
+            try {
+              this.modManager.setActiveModByClassloader(binding.listenerClass.getClassLoader());
+              binding.execute(event);
+            } catch(final IllegalAccessException | InvocationTargetException e) {
+              LOGGER.error("Failed to deliver event", e);
+            }
           }
 
           if(binding.isInvalid()) {
