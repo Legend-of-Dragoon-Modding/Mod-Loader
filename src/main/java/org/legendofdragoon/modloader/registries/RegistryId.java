@@ -70,6 +70,6 @@ public final class RegistryId {
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.modId, this.entryId);
+    return this.modId.hashCode() * 31 + this.entryId.hashCode();
   }
 }
