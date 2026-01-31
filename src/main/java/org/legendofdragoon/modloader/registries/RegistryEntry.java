@@ -9,6 +9,11 @@ public class RegistryEntry {
     this.id = id;
   }
 
+  public <EntryType extends RegistryEntry, RegistryType extends Registry<EntryType>> RegistryType getRegistry() {
+    //noinspection unchecked
+    return (RegistryType)this.registry;
+  }
+
   public RegistryId getRegistryId() {
     return this.id;
   }
