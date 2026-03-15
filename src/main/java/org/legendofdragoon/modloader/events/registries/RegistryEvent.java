@@ -20,5 +20,10 @@ public abstract class RegistryEvent<Type extends RegistryEntry> extends Event {
     public Type register(final RegistryId id, final Type entry) {
       return this.registry.register(id, entry);
     }
+
+    @Override
+    protected boolean isCritical() {
+      return true;
+    }
   }
 }

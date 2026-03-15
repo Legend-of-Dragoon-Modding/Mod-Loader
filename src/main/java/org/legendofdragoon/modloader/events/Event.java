@@ -14,4 +14,9 @@ public class Event {
   boolean shouldPropagate() {
     return this.propagate;
   }
+
+  /** If true, exceptions thrown in event handlers will be rethrown instead of caught and logged */
+  protected boolean isCritical() {
+    return false;
+  }
 }

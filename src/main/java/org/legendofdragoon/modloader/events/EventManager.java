@@ -2,6 +2,7 @@ package org.legendofdragoon.modloader.events;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.legendofdragoon.modloader.ModContainer;
 import org.legendofdragoon.modloader.ModManager;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
@@ -107,6 +108,21 @@ public class EventManager {
               this.modManager.setActiveModByClassloader(binding.listenerClass.getClassLoader());
               binding.execute(event);
             } catch(final IllegalAccessException | InvocationTargetException e) {
+              if(event.isCritical()) {
+                Throwable t = e;
+
+                if(t.getCause() != null) {
+                  t = t.getCause();
+                }
+
+                String modId = "Unknown mod";
+                if(ModContainer.getActiveMod() != null) {
+                  modId = ModContainer.getActiveMod().modId;
+                }
+
+                throw new EventHandlerException(modId + " event handler for " + event.getClass().getSimpleName() + " threw an exception", t.getCause());
+              }
+
               LOGGER.error("Failed to deliver event", e);
             }
           }
