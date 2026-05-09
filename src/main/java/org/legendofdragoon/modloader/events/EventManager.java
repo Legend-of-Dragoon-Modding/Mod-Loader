@@ -120,7 +120,7 @@ public class EventManager {
                   modId = ModContainer.getActiveMod().modId;
                 }
 
-                throw new EventHandlerException(modId + " event handler for " + event.getClass().getSimpleName() + " threw an exception", t.getCause());
+                throw new EventHandlerException(modId + " event handler for " + event.getClass().getSimpleName() + " threw an exception", t);
               }
 
               LOGGER.error("Failed to deliver event", e);
