@@ -25,7 +25,14 @@ public class LangManager {
   }
 
   public String getTranslation(final String key) {
-    return this.translations.getOrDefault(key, key).formatted();
+    final String format = this.translations.getOrDefault(key, key);
+
+    // Simple strings don't need to be run through `formatted`
+    if(!format.contains("%")) {
+      return format;
+    }
+
+    return format.formatted();
   }
 
   public String getTranslation(final String key, final Object... args) {
