@@ -2,30 +2,59 @@ package org.legendofdragoon.modloader.i18n;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.legendofdragoon.modloader.LocaleSpecificity;
 import org.legendofdragoon.modloader.ModContainer;
 import org.legendofdragoon.modloader.ModManager;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class LangManager {
   private static final Logger LOGGER = LogManager.getFormatterLogger(LangManager.class);
 
-  private final Map<String, String> translations = new HashMap<>();
+  private static final Pattern LANG_PATTERN = Pattern.compile("^(?:\\w+\\.)?([a-z]+)(?:_([A-Z]+))?\\.lang$");
+
+  private final Map<LocaleSpecificity, Map<String, String>> translations = new EnumMap<>(LocaleSpecificity.class);
 
   public LangManager(final Consumer<Access> access) {
+    for(final LocaleSpecificity specificity : LocaleSpecificity.values()) {
+      this.translations.put(specificity, new HashMap<>());
+    }
+
     access.accept(new Access());
   }
 
+  private String findTranslation(final String key) {
+    for(final LocaleSpecificity specificity : LocaleSpecificity.values()) {
+      final String value = this.translations.get(specificity).get(key);
+
+      if(value != null) {
+        return value;
+      }
+    }
+
+    return key;
+  }
+
   public String getTranslation(final String key) {
-    final String format = this.translations.getOrDefault(key, key);
+    final String format = this.findTranslation(key);
 
     // Simple strings don't need to be run through `formatted`
     if(!format.contains("%")) {
@@ -36,93 +65,126 @@ public class LangManager {
   }
 
   public String getTranslation(final String key, final Object... args) {
-    return this.translations.getOrDefault(key, key).formatted(args);
+    return this.findTranslation(key).formatted(args);
+  }
+
+  public Set<Locale> findAvailableOverrideLocales(final Path directory) throws IOException {
+    final Set<Locale> locales = new HashSet<>();
+
+    try(final Stream<Path> stream = Files.walk(directory, FileVisitOption.FOLLOW_LINKS)) {
+      stream.forEach(file -> {
+        final Matcher matcher = LANG_PATTERN.matcher(file.getFileName().toString());
+
+        if(matcher.matches()) {
+          final String language = matcher.group(1);
+          final String country = matcher.group(2);
+          locales.add(Locale.of(language, country != null ? country : ""));
+        }
+      });
+    }
+
+    return locales;
   }
 
   public class Access {
     private Access() { }
 
     public void initialize(final ModManager mods, final Locale locale) {
+      final Map<LocaleSpecificity, Map<String, String>> allLang = new EnumMap<>(LocaleSpecificity.class);
+
+      for(final LocaleSpecificity specificity : LocaleSpecificity.values()) {
+        allLang.put(specificity, new HashMap<>());
+      }
+
       for(final ModContainer mod : mods.getLoadedMods()) {
         try {
-          final URL langUrl = mod.getLangResource(locale);
+          final Map<LocaleSpecificity, URL> langUrls = mod.getLangResource(locale);
 
-          if(langUrl != null) {
-            this.loadLang(langUrl);
+          for(final var entry : langUrls.entrySet()) {
+            final LocaleSpecificity specificity = entry.getKey();
+            final URL langUrl = entry.getValue();
+            this.loadLang(langUrl, allLang.get(specificity));
           }
         } catch(final IOException e) {
           LOGGER.warn("Failed to load %s for mod %d", locale, mod.modId);
         }
       }
+
+      for(final LocaleSpecificity specificity : LocaleSpecificity.values()) {
+        this.loadLang(specificity, allLang.get(specificity));
+      }
     }
 
-    public void loadLang(final URL langUrl) throws IOException {
-      final Map<String, String> lang = new HashMap<>();
+    private void loadLang(final URL langUrl, final Map<String, String> lang) throws IOException {
       final Properties properties = new Properties();
       properties.load(langUrl.openStream());
 
-      for(final Object key : properties.keySet()) {
-        lang.put((String)key, properties.getProperty((String)key));
+      for(final String key : properties.stringPropertyNames()) {
+        lang.put(key, properties.getProperty(key));
       }
-
-      this.loadLang(lang);
     }
 
-    public void loadLang(final Path path) throws IOException {
+    public void loadLangOverrides(final Path directory, final Locale locale) throws IOException {
       final Map<String, String> lang = new HashMap<>();
-      final Properties properties = new Properties();
-      properties.load(Files.newInputStream(path));
+      final Map<LocaleSpecificity, List<Path>> langPaths = this.findLangPaths(directory, locale);
 
-      for(final Object key : properties.keySet()) {
-        lang.put((String)key, properties.getProperty((String)key));
+      for(final LocaleSpecificity specificity : LocaleSpecificity.values()) {
+        final List<Path> paths = langPaths.get(specificity);
+
+        if(paths != null) {
+          for(final Path path : paths) {
+            final Properties properties = new Properties();
+            try(final InputStream stream = Files.newInputStream(path)) {
+              properties.load(stream);
+            }
+
+            for(final String key : properties.stringPropertyNames()) {
+              lang.put(key, properties.getProperty(key));
+            }
+          }
+        }
       }
 
-      this.loadLang(lang);
+      this.loadLang(LocaleSpecificity.OVERRIDE, lang);
     }
 
-    public void loadLang(final Map<String, String> lang) {
-      LangManager.this.translations.putAll(lang);
+    public void addLangOverrides(final Map<String, String> lang) {
+      this.loadLang(LocaleSpecificity.OVERRIDE, lang);
     }
-    /**
-     * Searches for a lang file in the following order:
-     * <ol>
-     *   <li>Full locale code (see {@link Locale#toString()}</li>
-     *   <li>lang_COUNTRY (e.g. en_US)</li>
-     *   <li>lang (e.g. en)</li>
-     *   <li>en (fallback)</li>
-     *   <li>null (if en isn't found)</li>
-     * </ol>
-     */
-    public Path getLangPath(final Path directory, final Locale locale) {
-      final Path specific = directory.resolve("%s.lang".formatted(locale));
 
-      if(Files.exists(specific)) {
-        return specific;
+    private void loadLang(final LocaleSpecificity specificity, final Map<String, String> lang) {
+      LangManager.this.translations.get(specificity).putAll(lang);
+    }
+
+    private Map<LocaleSpecificity, List<Path>> findLangPaths(final Path directory, final Locale locale) throws IOException {
+      final Map<LocaleSpecificity, List<Path>> langPaths = new EnumMap<>(LocaleSpecificity.class);
+
+      try(final Stream<Path> stream = Files.walk(directory, FileVisitOption.FOLLOW_LINKS)) {
+        stream.forEach(file -> {
+          final Matcher matcher = LANG_PATTERN.matcher(file.getFileName().toString());
+
+          if(matcher.matches()) {
+            final String language = matcher.group(1);
+            final String country = matcher.group(2);
+
+            if(locale.getLanguage().equals(language) && locale.getCountry().equals(country)) {
+              langPaths.computeIfAbsent(LocaleSpecificity.LANGUAGE_COUNTRY, key -> new ArrayList<>()).add(file);
+            } else if(locale.getLanguage().equals(language) && locale.getCountry().isBlank() && country == null) {
+              langPaths.computeIfAbsent(LocaleSpecificity.LANGUAGE, key -> new ArrayList<>()).add(file);
+            } else if("en".equals(language) && country == null) {
+              langPaths.computeIfAbsent(LocaleSpecificity.FALLBACK, key -> new ArrayList<>()).add(file);
+            }
+          }
+        });
       }
 
-      final Path langCountry = directory.resolve("%s_%s.lang".formatted(locale.getLanguage(), locale.getCountry()));
-
-      if(Files.exists(langCountry)) {
-        return langCountry;
-      }
-
-      final Path lang = directory.resolve("%s.lang".formatted(locale.getLanguage()));
-
-      if(Files.exists(lang)) {
-        return lang;
-      }
-
-      final Path fallback = directory.resolve("en.lang");
-
-      if(Files.exists(fallback)) {
-        return fallback;
-      }
-
-      return null;
+      return langPaths;
     }
 
     public void reset() {
-      LangManager.this.translations.clear();
+      for(final LocaleSpecificity specificity : LocaleSpecificity.values()) {
+        LangManager.this.translations.put(specificity, new HashMap<>());
+      }
     }
   }
 }
