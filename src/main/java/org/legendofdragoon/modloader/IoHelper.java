@@ -1,9 +1,11 @@
 package org.legendofdragoon.modloader;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -16,7 +18,12 @@ public final class IoHelper {
   public static List<String> findJarResources(final Class<?> cls, final String path) {
     final List<String> found = new ArrayList<>();
 
-    final Path jarPath = Path.of(cls.getProtectionDomain().getCodeSource().getLocation().getPath());
+    final Path jarPath;
+    try {
+      jarPath = Paths.get(cls.getProtectionDomain().getCodeSource().getLocation().toURI());
+    } catch(final URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
 
     if(Files.isDirectory(jarPath)) {
       try(final DirectoryStream<Path> files = Files.newDirectoryStream(jarPath.getParent().resolve("resources").resolve(path))) {
